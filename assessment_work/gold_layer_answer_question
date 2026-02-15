@@ -1,0 +1,64 @@
+SELECT *
+FROM spectrum_schema.sales
+ORDER BY 1
+LIMIT 50;
+
+SELECT DISTINCT product
+FROM spectrum_schema.sales
+ORDER BY 1
+LIMIT 50;
+
+select * from spectrum_schema.user_profiles
+select * from spectrum_schema.customers
+select * from gold.user_profiles_enriched
+
+
+-- option 1
+WITH s AS (
+  SELECT
+    customerid,
+    CAST(purchasedate AS DATE) AS purchase_date,
+    product
+  FROM spectrum_schema.sales
+),
+u AS (
+  SELECT
+    client_id,
+    state,
+    birth_date
+  FROM gold.user_profiles_enriched
+)
+SELECT
+  u.state,
+  COUNT(*) AS tv_purchases
+FROM s
+JOIN u
+  ON s.customerid = u.client_id
+WHERE s.purchase_date BETWEEN DATE '2022-09-01' AND DATE '2022-09-10'
+  AND s.product ILIKE '%tv%'
+  AND (
+    DATEDIFF(year, u.birth_date, s.purchase_date)
+    - CASE
+        WHEN DATEADD(year, DATEDIFF(year, u.birth_date, s.purchase_date), u.birth_date) > s.purchase_date
+        THEN 1 ELSE 0
+      END
+  ) BETWEEN 20 AND 30
+GROUP BY 1
+ORDER BY tv_purchases DESC
+LIMIT 1;
+
+
+--another option
+SELECT
+  u.state,
+  COUNT(*) AS tv_purchases
+FROM spectrum_schema.sales s
+JOIN gold.user_profiles_enriched u
+  ON s.customerid = u.client_id
+WHERE CAST(s.purchasedate AS DATE) BETWEEN DATE '2022-09-01' AND DATE '2022-09-10'
+  AND s.product ILIKE '%tv%'
+  AND DATEDIFF(year, u.birth_date, CAST(s.purchasedate AS DATE)) BETWEEN 20 AND 30
+GROUP BY 1
+ORDER BY tv_purchases DESC
+LIMIT 1;
+
