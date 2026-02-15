@@ -31,7 +31,7 @@ def run_glue_job(**context):
 with DAG(
     dag_id="process_customers",
     start_date=datetime(2026, 1, 1),
-    schedule=None,  # або '@daily'
+    schedule='@daily',
     catchup=False,
     tags=["project"],
 ) as dag:
