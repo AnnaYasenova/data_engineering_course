@@ -761,7 +761,7 @@ Resources:
             - Name: AIRFLOW__CORE__DAGS_FOLDER
               Value: '/opt/airflow/dags'
             - Name: AIRFLOW__CORE__LOAD_EXAMPLES
-              Value: 'True'
+              Value: 'False'
             - Name: _AIRFLOW_WWW_USER_USERNAME
               Value: !Ref AirflowAdminUsername
             - Name: _AIRFLOW_WWW_USER_PASSWORD
@@ -981,38 +981,27 @@ Resources:
       TaskRoleArn: !GetAtt DAGSyncTaskRole.Arn
       ContainerDefinitions:
         - Name: dag-sync
-          Image: 'amazon/aws-cli:latest'
+          Image: amazon/aws-cli:latest
           Essential: true
+
+          EntryPoint:
+            - /bin/sh
+            - -c
+
+          Command:
+            - |
+              echo "Starting DAG sync from S3 to EFS..."
+              aws s3 sync s3://$S3_BUCKET/$S3_PREFIX $EFS_MOUNT_PATH --delete --exact-timestamps
+              echo "DAG sync completed successfully"
+              ls -la $EFS_MOUNT_PATH
+
           Environment:
             - Name: S3_BUCKET
               Value: !Ref AirflowBucket
             - Name: S3_PREFIX
-              Value: 'dags/'
+              Value: dags/
             - Name: EFS_MOUNT_PATH
-              Value: '/opt/airflow/dags'
-          MountPoints:
-            - SourceVolume: airflow-dags
-              ContainerPath: /opt/airflow/dags
-          Command:
-            - sh
-            - -c
-            - |
-              echo "Starting DAG sync from S3 to EFS..."
-              echo "S3 Bucket: $S3_BUCKET"
-              echo "S3 Prefix: $S3_PREFIX"
-              echo "EFS Mount: $EFS_MOUNT_PATH"
-              
-              # Create dags directory if it doesn't exist
-              mkdir -p $EFS_MOUNT_PATH
-              
-              # Sync DAGs from S3 to EFS
-              aws s3 sync s3://$S3_BUCKET/$S3_PREFIX $EFS_MOUNT_PATH --delete --exact-timestamps
-              
-              echo "DAG sync completed successfully"
-              
-              # List files for verification
-              echo "Files in EFS DAGs directory:"
-              ls -la $EFS_MOUNT_PATH
+              Value: /opt/airflow/dags
           LogConfiguration:
             LogDriver: awslogs
             Options:
